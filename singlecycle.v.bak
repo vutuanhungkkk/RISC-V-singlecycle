@@ -1,0 +1,126 @@
+module singlecycle(
+input wire clk,
+input wire reset,
+input wire [31:0] io_sw,
+output reg [31:0] pc_debug,
+output reg [31:0] io_lcd,
+output reg [31:0] io_ledg,
+output reg [31:0] io_ledr,
+output reg [31:0] io_hex0,
+output reg [31:0] io_hex1,
+output reg [31:0] io_hex2,
+output reg [31:0] io_hex3,
+output reg [31:0] io_hex4,
+output reg [31:0] io_hex5,
+output reg [31:0] io_hex6,
+output reg [31:0] io_hex7,
+); 
+reg [4:0] rs1_addr;
+reg [4:0] rs2_addr;
+reg [4:0] rd_addr;
+reg [31:0] rd_data;
+reg rd_wren;
+reg [31:0] rs1_data;
+reg [31:0] rs2_data;
+reg [31:0] st_data;
+reg st_en;
+reg [31:0] ld_data;
+reg br_sel;
+reg [31:0] alu_data;
+reg [31:0] operand_a;
+reg [31:0] Imm
+reg [31:0] operand_b;
+reg br_less;
+reg br_equal;
+reg wb_data;
+reg op_a_sel;
+reg op_b_sel;
+reg wb_sel;
+reg alu_op;
+reg [31;0] instr;
+reg [31:0] addr;
+reg [31:0] pc;
+reg [32:0] pc_four;
+reg br_unsigned
+initial begin
+  pc   = 32'd0;
+  br_unsigned = 0
+  addr = 32'd0;
+end
+
+always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            addr = 32'd0;
+            pc   = 32'd0;
+            br_unsigned = 0;
+            pc_four = 0;
+        end else begin
+            addr = addr + 1;
+	    pc_four = pc_four + 4;
+        end
+    end
+
+pc debug_pc(
+.clk(clk),
+.nxt_pc(pc),
+.pc(pc_debug));
+
+InstructionMemory InMem(
+.clk(clk),
+.reset(reset),
+.addr(addr)
+.instr(instr)
+);
+
+decoder(
+.clk(clk), .instr(instr), .rd_addr(rd_addr), .rs1_addr(rs1_addr), .rs2_addr(rs2_addr)
+);
+
+regfile reg(
+.clk_i(clk), .rst_ni(reset), .rs1_addr(rs1_addr), .rs2_addr(rs2_addr),
+.rd_addr(rd_addr), .rd_data(rd_data), .rd_wren(rd_wren), .rs1_data(rs1_data), .rs2_data(rs2_data)
+);
+
+lsu load_store(
+.clk_i(clk), .rst_ni(reset), .addr(addr), .st_data(st_data), .st_en(st_en), .io_sw(io_sw), .ld_data(ld_data),
+.io_lcd(io_lcd), .io_ledg(io_ledg), .io_ledr(io_ledr), .io_hex0(io_hex0), .io_hex1(io_hex1), .io_hex2(io_hex2), .io_hex3(io_hex3), .io_hex4(io_hex4), 
+.io_hex5(io_hex5), .io_hex6(io_hex6), .io_hex7(io_hex7), 
+);
+
+always @(*) begin
+mux1 mux_nxtpc(
+.pc_four(pc_four), .br_sel(br_sel), .alu_data(alu_data), .nxt_pc(pc)
+);
+
+mux2 mux_opa(
+.pc(pc), .rs1_data(rs1_data), .operand_a(operand_a)
+);
+
+ImmGen immgen(
+.instr(instr), .Imm(Imm)
+);
+
+br_comp brcomp(
+.rs1_data(rs1_data), .rs2_data(rs2_data),
+);
+
+mux3 mux_opb(
+.rs2_data(rs2_data), .Imm(Imm), .operand_b(operand_b), .br_unsigned(br_unsigned),
+.br_less(br_less), .br_equal(br_equal)
+);
+
+mux4 mux_wb(
+.pc_four(pc_four), .alu_data(alu_data), .ld_data(ld_data), .wb_data(wb_data)
+);
+
+alu Alu(
+.operand_a(operand_a), .operand_b(operand_b), .alu_op(alu_op), .alu_data(alu_data)
+);
+
+ctrl_unit control(
+.instr(instr), .br_unsigned(br_unsigned), .br_less(br_less), .br_equal(br_equal), .br_sel(br_sel)
+.rd_wren(rd_wren), .mem_wren(mem_wren), .op_a_sel(op_a_sel), .op_b_sel(op_b_sel), .alu_op(alu_op), .wb_sel(wb_sel)
+);
+
+end
+endmodule

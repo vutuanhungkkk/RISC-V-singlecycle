@@ -1,0 +1,42 @@
+module InstructionMemory(
+    input wire clk,        // Xung clock đầu vào
+    input wire reset,      // Tín hiệu reset đầu vào
+    input wire [31:0] addr, // Địa chỉ đầu vào (32-bit)
+    output reg [31:0] instruction // Lệnh đầu ra (32-bit)
+);
+
+    // Khai báo mảng để lưu trữ các giá trị lệnh
+    reg [31:0] memory [0:255]; // Bộ nhớ lưu trữ lệnh (giả định có 256 lệnh)
+    
+    // Khai báo biến đọc tệp
+    integer file, ret;
+    integer i;
+    
+    // Đọc dữ liệu từ tệp và lưu vào mảng bộ nhớ
+    initial begin
+        file = $fopen("fibonacci.txt", "r"); // Mở tệp ở chế độ đọc
+        if (file == 0) begin
+            $display("Error: Unable to open file.");
+            $finish;
+        end
+        
+        // Đọc dữ liệu từ tệp và lưu vào bộ nhớ
+        i = 0;
+        while (!$feof(file)) begin
+            ret = $fscanf(file, "%h\n", memory[i]);
+            i = i + 1;
+        end
+        
+        $fclose(file); // Đóng tệp sau khi đọc xong
+    end
+    
+    // Cung cấp lệnh dựa trên địa chỉ và xung clock
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            instruction = 32'd0; // Khi reset, đặt giá trị lệnh là 0
+        end else begin
+            instruction = memory[addr[7:0]]; // Lấy lệnh từ bộ nhớ dựa trên địa chỉ
+        end
+    end
+    
+endmodule
